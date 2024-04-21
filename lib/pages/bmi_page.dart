@@ -1,6 +1,8 @@
 import 'package:bmi_calculator/widgets/info_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math';
 
 class BMIPage extends StatefulWidget {
   const BMIPage({super.key});
@@ -13,7 +15,7 @@ class BMIPage extends StatefulWidget {
 
 class _BMIPageState extends State<BMIPage> {
   late double _deviceHeight, _deviceWidth;
-  int _age = 0, _weight = 0, _height = 0, _gender = 0;
+  int _age = 25, _weight = 60, _height = 170, _gender = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -21,25 +23,28 @@ class _BMIPageState extends State<BMIPage> {
     _deviceWidth = MediaQuery.of(context).size.width;
 
     return CupertinoPageScaffold(
-      child: Container(
-        height: _deviceHeight * 0.85,
-        child: Column(
-          mainAxisSize: MainAxisSize.max,
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.max,
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _ageSelect(),
-                _weightSelect(),
-              ],
-            ),
-            _heightSlider(),
-            _genderSlidingSegmented(),
-          ],
+      child: Center(
+        child: SizedBox(
+          height: _deviceHeight * 0.85,
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _ageSelect(),
+                  _weightSelect(),
+                ],
+              ),
+              _heightSlider(),
+              _genderSlidingSegmented(),
+              _calculateBMIButton(),
+            ],
+          ),
         ),
       ),
     );
@@ -262,6 +267,79 @@ class _BMIPageState extends State<BMIPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _calculateBMIButton() {
+    return SizedBox(
+      height: _deviceHeight * 0.07,
+      width: _deviceWidth * 0.7,
+      child: CupertinoButton.filled(
+        child: const Text(
+          'Calculate BMI',
+        ),
+        onPressed: () {
+          if(_weight > 0 && _height > 0) {
+            double bmi  = _weight / pow(_height / 100, 2);
+            _showResultDialog(bmi);
+          }
+        },
+      ),
+    );
+  }
+
+  void _showResultDialog(double bmi) {
+    String? status;
+    if(bmi < 18.5) {
+      status = 'Underweight';
+    }
+    else if(bmi >= 18.5 && bmi < 24.9) {
+      status = 'Normal';
+    }
+    else if(bmi >= 25 && bmi < 29.9) {
+      status = 'Overweight';
+    }
+    else {
+      status = 'Obese';
+    }
+    showCupertinoDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CupertinoAlertDialog(
+          title: Text(
+            status!,
+          ),
+          content: Text(
+            bmi.toStringAsFixed(2),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text(
+                'Ok',
+              ),
+              onPressed: () {
+                _saveResult(bmi.toStringAsFixed(2), status!);
+                Navigator.pop(context);
+              },
+            )
+          ],
+        );
+      }
+    );
+  }
+
+  void _saveResult(String bmi, String status) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'bmiDate',
+      DateTime.now().toString(),
+    );
+    await prefs.setStringList(
+      'bmiData',
+      <String>[
+        bmi,
+        status,
+      ],
     );
   }
 }
